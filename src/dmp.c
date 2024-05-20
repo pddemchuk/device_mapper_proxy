@@ -5,37 +5,48 @@
 #include <linux/device-mapper.h>
 
 
-struct dmp_target {
-    struct dm_dev *dev;
-};
-
-
 struct operation_statistics {
     unsigned long write_reqs_count;
     unsigned long read_reqs_count;
-    unsigned long avg_reqs_count;
-    unsigned long write_avg_block_size;
-    unsigned long read_avg_block_size;
-    unsigned long avg_block_size;
+    unsigned long avg_reqs_count;           //delete
+    unsigned long write_sum_block_size;
+    unsigned long read_sum_block_size;
+    unsigned int write_avg_block_size;      //delete
+    unsigned int read_avg_block_size;       //delete
+    unsigned int avg_block_size;            //delete
 };
 
+struct dmp_target {
+    struct dm_dev *dev;
+    struct operation_statistics stat;
+};
 
 static int proxy_target_map(struct dm_target *ti, struct bio *bio)
 {
+    struct dmp_target *dt = (struct dmp_target *) ti->private;
+    unsigned int block_size = bio->bi_iter.bi_size;
+    dt->stat.avg_reqs_count += 1;
+    dt->stat.avg_block_size = (dt->stat.read_sum_block_size + dt->stat.write_sum_block_size) / dt->stat.avg_reqs_count;
     switch (bio_op(bio)) {
 	case REQ_OP_READ:
+        dt->stat.read_reqs_count += 1;
+        dt->stat.read_sum_block_size += block_size;
+        dt->stat.read_avg_block_size = dt->stat.read_sum_block_size / dt->stat.read_reqs_count;
 		break;
 	case REQ_OP_WRITE:
+        dt->stat.write_reqs_count += 1;
+        dt->stat.write_sum_block_size += block_size;
+        dt->stat.write_avg_block_size = dt->stat.write_sum_block_size / dt->stat.write_reqs_count;
 		break;
 	default:
 		return DM_MAPIO_KILL;
 	}
 
+    printk(KERN_INFO "%u %u %lu", dt->stat.read_avg_block_size, dt->stat.write_avg_block_size, dt->stat.avg_reqs_count);
 	bio_endio(bio);
 
 	return DM_MAPIO_SUBMITTED;
 }
-
 
 static int proxy_target_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 {
@@ -63,9 +74,17 @@ static int proxy_target_ctr(struct dm_target *ti, unsigned int argc, char **argv
         goto bad;
     }
 
+    dt->stat.write_reqs_count = 0;
+    dt->stat.read_reqs_count = 0;
+    dt->stat.avg_reqs_count = 0;
+    dt->stat.write_sum_block_size = 0;
+    dt->stat.read_sum_block_size = 0;
+    dt->stat.write_avg_block_size = 0;
+    dt->stat.read_avg_block_size = 0;
+    dt->stat.avg_block_size = 0;
     ti->private = dt;
 
-    printk(KERN_CRIT "\n>>out function proxy_target_ctr \n");                       
+    printk(KERN_CRIT "\n>>out function proxy_target_ctr \n");                      
     return 0;
 
     bad:
@@ -73,7 +92,6 @@ static int proxy_target_ctr(struct dm_target *ti, unsigned int argc, char **argv
         printk(KERN_CRIT "\n>>out function proxy_target_ctr with error \n");           
         return -EINVAL;
 }
-
 
 static void proxy_target_dtr(struct dm_target *ti)
 {
@@ -84,7 +102,6 @@ static void proxy_target_dtr(struct dm_target *ti)
     printk(KERN_CRIT "\n>>out function proxy_target_dtr \n");  
 }
 
-
 static struct target_type proxy_target = {
     .name = "dmp",
     .version = {1,0,0},
@@ -93,7 +110,6 @@ static struct target_type proxy_target = {
     .dtr = proxy_target_dtr,
     .map = proxy_target_map,
 };
-
 
 static int init_proxy_target(void)
 {
