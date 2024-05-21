@@ -14,7 +14,7 @@ dmp:
 	insmod ${BUILD_DIR}dmp.ko
 
 .PHONY: test
-test:
+test: ${BUILD_DIR}dmp.ko
 	make create_devices
 	@echo "${COLOR}${DIVIDER}TESTING DEVICES${DIVIDER}${NO_COLOR}"
 	dd if=/dev/random of=/dev/mapper/dmp1 bs=4k count=1
@@ -24,7 +24,7 @@ test:
 	make clean_devices
 
 .PHONY: create_devices
-create_devices:
+create_devices: ${BUILD_DIR}dmp.ko
 	@echo "${COLOR}${DIVIDER}CREATING DEVICES${DIVIDER}${NO_COLOR}"
 	dmsetup create zero1 --table "0 ${SIZE} zero"
 	dmsetup create dmp1 --table "0 ${SIZE} dmp /dev/mapper/zero1"
@@ -37,7 +37,7 @@ clean_devices:
 
 .PHONY: clean
 clean:
-	@echo "${COLOR}${DIVIDER}REMOVING MODULE${DIVIDER}${NO_COLOR}"
-	rmmod dmp
 	@echo "${COLOR}${DIVIDER}CLEANING BUILD DIRECTORY${DIVIDER}${NO_COLOR}"
 	make -C ${BUILD_DIR} clean
+	@echo "${COLOR}${DIVIDER}REMOVING MODULE${DIVIDER}${NO_COLOR}"
+	rmmod dmp
