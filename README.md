@@ -1,14 +1,13 @@
 # device_mapper_proxy
-> Tested on Ubuntu 24.04 with kernel release 6.8.0-31-generic, gcc 13.2.0, make 4.3
 
 This is a linux kernel module that creates virtual block devices on top of an existing device mapper and monitors operation statistics.
 
-## dependencies
+> Tested on Ubuntu 24.04 with kernel release 6.8.0-31-generic, gcc 13.2.0, make 4.3
+## prepare
 
 ```
-$ apt-get install build-essential linux-headers-`uname -r`
+$ sudo apt install build-essential linux-headers-`uname -r`
 ```
-
 
 ## makefile-based build
 
@@ -24,7 +23,7 @@ Remove module and clean build directory:
 $ sudo make clean
 ```
 
-Alternativly, you can:
+Alternatively, you can:
 
 - Install module
 ```
@@ -64,24 +63,25 @@ $ make clean
 
 ## usage
 
-Creating a test block device
+Creating a block device
 ```
 $ sudo dmsetup create zero1 --table "0 $size zero"
-```
-Note: $size - произвольный размер устройства.
-
-Creating a proxy block device
-```
 $ sudo dmsetup create dmp1 --table "0 $size dmp /dev/mapper/zero1"
 ```
-Note: $size - размер устройства /dev/mapper/zero1.
+
+Example of operations:
+```
+$ sudo dd if=/dev/random of=/dev/mapper/dmp1 bs=4k count=1
+$ sudo dd of=/dev/null if=/dev/mapper/dmp1 bs=4k count=1
+```
 
 Statistics:
 ```
 cat /sys/module/dmp/stat/volumes
 ```
 
-Delete device:
+Deleting devices:
 ```
 $ sudo dmsetup remove dmp1
+$ sudo dmsetup remove zero1
 ```
