@@ -2,7 +2,7 @@
 
 This is a linux kernel module that creates virtual block devices on top of an existing device mapper and monitors operation statistics.
 
-> Tested on Ubuntu 24.04 with kernel release 6.8.0-31-generic, gcc 13.2.0, make 4.3
+> Tested on Ubuntu 24.04 with kernel release 6.8.0-31-generic, gcc 13.2.0, make 4.3.
 ## prepare
 
 ```
@@ -33,6 +33,16 @@ $ sudo make dmp
 - Test module
 ```
 $ sudo make test
+```
+
+- Create test device
+```
+$ sudo make create_devices
+```
+
+- Remove test device
+```
+$ sudo make clean_devices
 ```
 
 ## manual build
