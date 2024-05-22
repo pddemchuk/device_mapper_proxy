@@ -1,3 +1,7 @@
+/*
+ * Proxy target for device mapper.
+ */
+ 
 #include<linux/module.h>
 #include<linux/kernel.h>
 #include<linux/init.h>
@@ -6,6 +10,9 @@
 #include <linux/kobject.h>
 
 
+/* 
+ * This is a structure stores information about the statistics of operations performed on the device.
+ */
 struct operation_statistics {
     unsigned long write_reqs_count;
     unsigned long read_reqs_count;
@@ -13,17 +20,21 @@ struct operation_statistics {
     unsigned long read_sum_block_size;
 };
 
+/* This is a structure stores information about the underlying device.
+ * Param:
+ * dev : Underlying device
+ * stat: Operation statistics
+ * stat_kobj: Kobj for statictics in sysfs
+ */
 struct dmp_target {
     struct dm_dev *dev;
     struct operation_statistics stat;
     struct kobject stat_kobj;
 };
 
-static struct attribute volumes_attribute = {
-    .name = "volumes",
-    .mode = 0444,
-};
-
+/*
+ * Function is use for reading the volumes attribute.
+ */
 static ssize_t show_stat(struct kobject *kobj, struct attribute *attr, char *buf) {
     struct dmp_target *dt = container_of(kobj, struct dmp_target, stat_kobj);
     unsigned long avg_reqs_count = dt->stat.read_reqs_count + dt->stat.write_reqs_count;
@@ -41,7 +52,15 @@ static ssize_t show_stat(struct kobject *kobj, struct attribute *attr, char *buf
                         avg_reqs_count, (dt->stat.read_sum_block_size + dt->stat.write_sum_block_size) / avg_reqs_count);
 }
 
-struct sysfs_ops volumes_sysfs_ops = {
+/*
+ * Next structures are needed to create statistics kobject.
+ */
+static struct attribute volumes_attribute = {
+    .name = "volumes",
+    .mode = 0444,
+};
+
+static struct sysfs_ops volumes_sysfs_ops = {
     .show = show_stat,
 };
 
@@ -49,6 +68,9 @@ static const struct kobj_type stat_ktype = {
     .sysfs_ops = &volumes_sysfs_ops,
 };
 
+/* Map function of proxy target. 
+ * This function gets called whenever you get a new bio request. 
+ */
 static int proxy_target_map(struct dm_target *ti, struct bio *bio)
 {
     struct dmp_target *dt = (struct dmp_target *) ti->private;
@@ -72,6 +94,9 @@ static int proxy_target_map(struct dm_target *ti, struct bio *bio)
 	return DM_MAPIO_SUBMITTED;
 }
 
+/* Constructor Function of proxy target.
+ * This gets called when we create some device of type 'dmp' 'using dmsetup create'.
+ */
 static int proxy_target_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 {
     if (argc != 1) {
@@ -123,6 +148,9 @@ static int proxy_target_ctr(struct dm_target *ti, unsigned int argc, char **argv
     return 0;
 }
 
+/* Destruction Function of proxy target.
+ * This gets called when we remove a device of type 'dmp' using 'dmsetup remove'.
+ */
 static void proxy_target_dtr(struct dm_target *ti)
 {
     struct dmp_target *dt = (struct dmp_target *) ti->private;
@@ -131,6 +159,9 @@ static void proxy_target_dtr(struct dm_target *ti)
     kfree(dt);
 }
 
+/*
+ * This structure is fops for proxy target.
+ */
 static struct target_type proxy_target = {
     .name = "dmp",
     .version = {1,0,0},
